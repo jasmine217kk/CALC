@@ -2,7 +2,7 @@ name: "afv-library PR Slack Notifier"
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, reopened]
 
 jobs:
   slack-fancy-notify:
@@ -28,7 +28,7 @@ jobs:
             const baseBranch = pr.base.ref;
             
             // Build a message string
-            const message = `📖 *AFV-LIBRARY | Pull Request Submission*\n` +
+            const message = `🔖 *AFV-LIBRARY | Pull Request Submission*\n` +
                             `________________________________________________\n\n` +
                             `*Title:* ${pr.title}\n` +
                             `*Author:* \`${pr.user.login}\`\n` +
