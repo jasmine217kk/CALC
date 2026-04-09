@@ -1,0 +1,28 @@
+name: PR Slack Notifier
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  slack-alert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send PR Notification
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "🚀 *New PR in ${{ github.event.repository.name }}*",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "📦 *Repo:* ${{ github.event.repository.name }}\n👤 *Author:* ${{ github.actor }}\n🔗 *PR:* <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
