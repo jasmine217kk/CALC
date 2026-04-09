@@ -27,15 +27,14 @@ jobs:
             const headBranch = pr.head.ref; 
             const baseBranch = pr.base.ref;
             
-            // Build a more beautiful message string
-            const message = `*📚 AFV-LIBRARY PR SUBMISSION*\n` +
-                            `￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣\n` +
-                            `📑 *Title:* ${pr.title}\n` +
-                            `👤 *Author:* \`${pr.user.login}\`\n` +
-                            `🛣️ *Path:* \`${headBranch}\` ➔ \`${baseBranch}\`\n` +
-                            `📊 *Stats:* *+${additions}* / *-${deletions}* lines (${changedFiles} files)\n` +
-                            `──────────────────────────────\n` +
-                            `🚀 <${pr.html_url}|*Review Pull Request on GitHub*>`;
+            // Build a message string
+            const message = `📖 *AFV-LIBRARY | Pull Request Submission*\n` +
+                            `________________________________________________\n\n` +
+                            `*Title:* ${pr.title}\n` +
+                            `*Author:* \`${pr.user.login}\`\n` +
+                            `*Route:* \`${head}\` → \`${base}\`\n` +
+                            `*Changes:* ${changedFiles} files [ +${additions} / -${deletions} ]\n\n` +
+                            `🔗 <${pr.html_url}|*View on GitHub*>`;
 
             const url = new URL(process.env.SLACK_WEBHOOK_URL);
             const options = {
