@@ -1,51 +1,42 @@
-name: Send PR Details
+name: "afv-library Fancy Slack Notifier"
+
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, synchronize, reopened]
 
 jobs:
-  send-pr-info:
+  slack-fancy-notify:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+      contents: read
     steps:
-      - name: Send Slack Notification
-        uses: slackapi/slack-github-action@v1.26.0
-        with:
-          # The 'text' field here is what appears in the desktop/phone notification popup
-          payload: |
-            {
-              "text": "New PR Submission: ${{ github.event.pull_request.title }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "📚 afv-library PR Submission",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Title:* ${{ github.event.pull_request.title }}\n*Author:* `${{ github.actor }}`\n*Repo:* ${{ github.event.repository.name }}"
-                  }
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Pull Request",
-                        "emoji": true
-                      },
-                      "url": "${{ github.event.pull_request.html_url }}",
-                      "style": "primary"
-                    }
-                  ]
-                }
-              ]
-            }
+      - name: "Fetch Details and Post to Slack"
+        uses: actions/github-script@v7
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const repoName = context.repo.repo;
+            
+            // Get stats
+            const additions = pr.additions;
+            const deletions = pr.deletions;
+            const changedFiles = pr.changed_files;
+            
+            // Build the message string
+            const message = `📚 *afv-library PR Submission*\n` +
+                            `------------------------------------------\n` +
+                            `*Title:* ${pr.title}\n` +
+                            `*Author:* \`${pr.user.login}\`\n` +
+                            `*Stats:* +${additions} / -${deletions} lines (${changedFiles} files)\n` +
+                            `*Action:* <${pr.html_url}|🔍 Review Pull Request>`;
+
+            // Send to Slack using a simple fetch call
+            const fetch = require('node-fetch');
+            await fetch(process.env.SLACK_WEBHOOK_URL, {
+              method: 'POST',
+              body: JSON.stringify({ text: message }),
+              headers: { 'Content-Type': 'application/json' }
+            });
