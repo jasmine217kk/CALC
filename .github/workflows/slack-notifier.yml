@@ -24,6 +24,8 @@ jobs:
             const additions = pr.additions;
             const deletions = pr.deletions;
             const changedFiles = pr.changed_files;
+            const headBranch = pr.head.ref; 
+            const baseBranch = pr.base.ref;
             
             // Build a more beautiful message string
             const message = `*📚 AFV-LIBRARY PR SUBMISSION*\n` +
