@@ -10,7 +10,42 @@ jobs:
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          # This method is more stable than the multi-line '|' block
-          payload: "{\"text\":\"🚀 *New PR in ${{ github.event.repository.name }}*\\n*Title:* #${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }}\\n*Author:* ${{ github.actor }}\\n*Link:* <${{ github.event.pull_request.html_url }}|Click here to review>\"}"
+          # The 'text' field here is what appears in the desktop/phone notification popup
+          payload: |
+            {
+              "text": "New PR Submission: ${{ github.event.pull_request.title }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "📚 afv-library PR Submission",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Title:* ${{ github.event.pull_request.title }}\n*Author:* `${{ github.actor }}`\n*Repo:* ${{ github.event.repository.name }}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Pull Request",
+                        "emoji": true
+                      },
+                      "url": "${{ github.event.pull_request.html_url }}",
+                      "style": "primary"
+                    }
+                  ]
+                }
+              ]
+            }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
