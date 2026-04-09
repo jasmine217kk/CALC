@@ -1,4 +1,4 @@
-name: "afv-library Fancy Slack Notifier"
+name: "afv-library PR Slack Notifier"
 
 on:
   pull_request:
@@ -25,12 +25,15 @@ jobs:
             const deletions = pr.deletions;
             const changedFiles = pr.changed_files;
             
-            const message = `📚 *afv-library PR Submission*\n` +
-                            `------------------------------------------\n` +
-                            `*Title:* ${pr.title}\n` +
-                            `*Author:* \`${pr.user.login}\`\n` +
-                            `*Stats:* +${additions} / -${deletions} lines (${changedFiles} files)\n` +
-                            `*Action:* <${pr.html_url}|🔍 Review Pull Request>`;
+            // Build a more beautiful message string
+            const message = `*📚 AFV-LIBRARY PR SUBMISSION*\n` +
+                            `￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣\n` +
+                            `📑 *Title:* ${pr.title}\n` +
+                            `👤 *Author:* \`${pr.user.login}\`\n` +
+                            `🛣️ *Path:* \`${headBranch}\` ➔ \`${baseBranch}\`\n` +
+                            `📊 *Stats:* *+${additions}* / *-${deletions}* lines (${changedFiles} files)\n` +
+                            `──────────────────────────────\n` +
+                            `🚀 <${pr.html_url}|*Review Pull Request on GitHub*>`;
 
             const url = new URL(process.env.SLACK_WEBHOOK_URL);
             const options = {
