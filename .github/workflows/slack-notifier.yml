@@ -11,8 +11,10 @@ jobs:
       - name: Send PR Notification
         uses: slackapi/slack-github-action@v1.26.0
         with:
+          # We use the 'payload' key with a JSON string to prevent the action from flattening it
           payload: |
             {
+              "text": "🚀 New PR in ${{ github.event.repository.name }}",
               "blocks": [
                 {
                   "type": "section",
@@ -20,19 +22,6 @@ jobs:
                     "type": "mrkdwn",
                     "text": "🚀 *New PR in ${{ github.event.repository.name }}*\n\n*Title:* ${{ github.event.pull_request.title }}\n*Author:* ${{ github.actor }}\n*Link:* ${{ github.event.pull_request.html_url }}"
                   }
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Pull Request"
-                      },
-                      "url": "${{ github.event.pull_request.html_url }}"
-                    }
-                  ]
                 }
               ]
             }
