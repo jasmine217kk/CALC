@@ -28,12 +28,12 @@ jobs:
             const baseBranch = pr.base.ref;
             
             // Build a message string
-            const message = `*AFV-LIBRARY | Pull Request Submission*\n` +
+            const message = `🔖 *AFV-LIBRARY | Pull Request Submission*\n` +
                             `________________________________________________\n\n` +
                             `*Title:* ${pr.title}\n` +
                             `*Author:* \`${pr.user.login}\`\n` +
                             `*Route:* \`${headBranch}\` → \`${baseBranch}\`\n` +
-                            `*Changes:* ${changedFiles} files [ +${additions} / -${deletions} ]\n\n` +
+                            `*Changes:* ${changedFiles} files [ +${additions} / -${deletions} ]\n` +
                             `________________________________________________\n\n` +
                             `🚀 <${pr.html_url}|*Review Pull Request on GitHub*>`;
 
