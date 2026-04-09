@@ -32,7 +32,7 @@ jobs:
                             `________________________________________________\n\n` +
                             `*Title:* ${pr.title}\n` +
                             `*Author:* \`${pr.user.login}\`\n` +
-                            `*Route:* \`${head}\` → \`${base}\`\n` +
+                            `*Route:* \`${headBranch}\` → \`${baseBranch}\`\n` +
                             `*Changes:* ${changedFiles} files [ +${additions} / -${deletions} ]\n\n` +
                             `🔗 <${pr.html_url}|*View on GitHub*>`;
 
