@@ -17,15 +17,14 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         with:
           script: |
+            const https = require('https');
             const pr = context.payload.pull_request;
-            const repoName = context.repo.repo;
             
-            // Get stats
+            // Stats from the context
             const additions = pr.additions;
             const deletions = pr.deletions;
             const changedFiles = pr.changed_files;
             
-            // Build the message string
             const message = `📚 *afv-library PR Submission*\n` +
                             `------------------------------------------\n` +
                             `*Title:* ${pr.title}\n` +
@@ -33,10 +32,18 @@ jobs:
                             `*Stats:* +${additions} / -${deletions} lines (${changedFiles} files)\n` +
                             `*Action:* <${pr.html_url}|🔍 Review Pull Request>`;
 
-            // Send to Slack using a simple fetch call
-            const fetch = require('node-fetch');
-            await fetch(process.env.SLACK_WEBHOOK_URL, {
+            const url = new URL(process.env.SLACK_WEBHOOK_URL);
+            const options = {
+              hostname: url.hostname,
+              path: url.pathname + url.search,
               method: 'POST',
-              body: JSON.stringify({ text: message }),
               headers: { 'Content-Type': 'application/json' }
+            };
+
+            const req = https.request(options, (res) => {
+              res.on('data', () => {});
             });
+
+            req.on('error', (e) => { console.error(e); });
+            req.write(JSON.stringify({ text: message }));
+            req.end();
