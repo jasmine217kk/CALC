@@ -5,7 +5,7 @@ on:
     types: [opened, reopened]
 
 jobs:
-  slack-fancy-notify:
+  pr-slack-notify:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
