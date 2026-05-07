@@ -27,6 +27,19 @@ jobs:
             const headBranch = pr.head.ref;
             const baseBranch = pr.base.ref;
 
+            // Extract GUS work item from PR title or body
+            const gusPattern = /W-\d{8}/i;
+            const titleMatch = pr.title.match(gusPattern);
+            const bodyMatch = pr.body ? pr.body.match(gusPattern) : null;
+            const gusWorkItem = titleMatch ? titleMatch[0] : (bodyMatch ? bodyMatch[0] : null);
+
+            // Build GUS link if work item found
+            let gusText = '';
+            if (gusWorkItem) {
+              const gusUrl = `https://gus.lightning.force.com/lightning/r/ADM_Work__c/${gusWorkItem}/view`;
+              gusText = `\n*GUS:* <${gusUrl}|${gusWorkItem}>`;
+            }
+
             // Build Block Kit payload with original style
             const payload = {
               attachments: [
@@ -37,7 +50,7 @@ jobs:
                       type: "section",
                       text: {
                         type: "mrkdwn",
-                        text: `:pr: *Pull Request Opened*\n*Title:* <${pr.html_url}|${pr.title}>\n*Author:* <${pr.user.html_url}|${pr.user.login}>`
+                        text: `:pr: *Pull Request Opened*\n*Title:* <${pr.html_url}|${pr.title}>\n*Author:* <${pr.user.html_url}|${pr.user.login}>${gusText}`
                       }
                     },
                     {
