@@ -37,7 +37,7 @@ jobs:
                       type: "section",
                       text: {
                         type: "mrkdwn",
-                        text: `:twisted_rightwards_arrows: *Pull Request Opened*\n*Title:* <${pr.html_url}|${pr.title}>\n*Author:* <${pr.user.html_url}|${pr.user.login}>`
+                        text: `:pr: *Pull Request Opened*\n*Title:* <${pr.html_url}|${pr.title}>\n*Author:* <${pr.user.html_url}|${pr.user.login}>`
                       }
                     },
                     {
