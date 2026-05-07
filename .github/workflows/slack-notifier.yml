@@ -29,33 +29,38 @@ jobs:
 
             // Build Block Kit payload with original style
             const payload = {
-              blocks: [
+              attachments: [
                 {
-                  type: "section",
-                  text: {
-                    type: "mrkdwn",
-                    text: `:announcement: *Pull Request Opened*\n________________________________________________\n\n*Title:* <${pr.html_url}|${pr.title}>\n*Author:* <${pr.user.html_url}|${pr.user.login}>\n*Route:* \`${headBranch}\` → \`${baseBranch}\`\n*Changes:* ${changedFiles} files [ +${additions} / -${deletions} ]\n________________________________________________`
-                  }
-                },
-                {
-                  type: "actions",
-                  elements: [
+                  color: "#9CA3AF", // Faded grey color
+                  blocks: [
                     {
-                      type: "button",
+                      type: "section",
                       text: {
-                        type: "plain_text",
-                        text: "Review PR"
-                      },
-                      url: pr.html_url,
-                      style: "primary"
+                        type: "mrkdwn",
+                        text: `:announcement: *Pull Request Opened*\n________________________________________________\n\n*Title:* <${pr.html_url}|${pr.title}>\n*Author:* <${pr.user.html_url}|${pr.user.login}>\n*Route:* \`${headBranch}\` → \`${baseBranch}\`\n*Changes:* ${changedFiles} files [ +${additions} / -${deletions} ]\n________________________________________________`
+                      }
                     },
                     {
-                      type: "button",
-                      text: {
-                        type: "plain_text",
-                        text: "View Files"
-                      },
-                      url: `${pr.html_url}/files`
+                      type: "actions",
+                      elements: [
+                        {
+                          type: "button",
+                          text: {
+                            type: "plain_text",
+                            text: "Review PR"
+                          },
+                          url: pr.html_url,
+                          style: "primary"
+                        },
+                        {
+                          type: "button",
+                          text: {
+                            type: "plain_text",
+                            text: "View Files"
+                          },
+                          url: `${pr.html_url}/files`
+                        }
+                      ]
                     }
                   ]
                 }
