@@ -29,40 +29,40 @@ jobs:
 
             // Build Block Kit payload with original style
             const payload = {
-              attachments: [
+              blocks: [
                 {
-                  color: "#9CA3AF", // Faded grey color
-                  blocks: [
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: `:announcement: *Pull Request Opened*\n*Title:* <${pr.html_url}|${pr.title}>\n*Author:* <${pr.user.html_url}|${pr.user.login}>\n*Route:* \`${headBranch}\` → \`${baseBranch}\`\n*Changes:* ${changedFiles} files [ +${additions} / -${deletions} ]`
+                  }
+                },
+                {
+                  type: "actions",
+                  elements: [
                     {
-                      type: "section",
+                      type: "button",
                       text: {
-                        type: "mrkdwn",
-                        text: `:announcement: *Pull Request Opened*\n________________________________________________\n\n*Title:* <${pr.html_url}|${pr.title}>\n*Author:* <${pr.user.html_url}|${pr.user.login}>\n*Route:* \`${headBranch}\` → \`${baseBranch}\`\n*Changes:* ${changedFiles} files [ +${additions} / -${deletions} ]\n________________________________________________`
-                      }
+                        type: "plain_text",
+                        text: "Review PR"
+                      },
+                      url: pr.html_url,
+                      style: "primary"
                     },
                     {
-                      type: "actions",
-                      elements: [
-                        {
-                          type: "button",
-                          text: {
-                            type: "plain_text",
-                            text: "Review PR"
-                          },
-                          url: pr.html_url,
-                          style: "primary"
-                        },
-                        {
-                          type: "button",
-                          text: {
-                            type: "plain_text",
-                            text: "View Files"
-                          },
-                          url: `${pr.html_url}/files`
-                        }
-                      ]
+                      type: "button",
+                      text: {
+                        type: "plain_text",
+                        text: "View Files"
+                      },
+                      url: `${pr.html_url}/files`
                     }
                   ]
+                }
+              ],
+              attachments: [
+                {
+                  color: "#9CA3AF"
                 }
               ]
             };
