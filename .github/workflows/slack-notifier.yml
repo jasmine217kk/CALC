@@ -19,14 +19,14 @@ jobs:
           script: |
             const https = require('https');
             const pr = context.payload.pull_request;
-            
+
             // Stats from the PR context
             const additions = pr.additions;
             const deletions = pr.deletions;
             const changedFiles = pr.changed_files;
-            const headBranch = pr.head.ref; 
+            const headBranch = pr.head.ref;
             const baseBranch = pr.base.ref;
-            
+
             // Calculate PR size and color
             const totalChanges = additions + deletions;
             let prSize, color;
@@ -40,12 +40,13 @@ jobs:
               prSize = "Large";
               color = "#ff0000"; // Red
             }
-            
-            // Truncate description if too long
-            const description = pr.body ? 
-              (pr.body.length > 200 ? pr.body.substring(0, 200) + "..." : pr.body) : 
-              "_No description provided_";
-            
+
+            // Determine emoji based on PR size
+            let sizeEmoji;
+            if (prSize === "Small") sizeEmoji = "🟢";
+            else if (prSize === "Medium") sizeEmoji = "🟡";
+            else sizeEmoji = "🔴";
+
             // Build Block Kit payload
             const payload = {
               attachments: [
@@ -56,58 +57,48 @@ jobs:
                       type: "header",
                       text: {
                         type: "plain_text",
-                        text: "🔖 New Pull Request",
+                        text: "🚀 Pull Request Opened",
                         emoji: true
                       }
                     },
                     {
                       type: "section",
-                      fields: [
-                        {
-                          type: "mrkdwn",
-                          text: `*Title*\n${pr.title}`
-                        },
-                        {
-                          type: "mrkdwn",
-                          text: `*Author*\n<${pr.user.html_url}|${pr.user.login}>`
-                        },
-                        {
-                          type: "mrkdwn",
-                          text: `*Route*\n\`${headBranch}\` → \`${baseBranch}\``
-                        },
-                        {
-                          type: "mrkdwn",
-                          text: `*Size*\n${prSize} (${totalChanges} changes)`
-                        }
-                      ]
-                    },
-                    {
-                      type: "section",
                       text: {
                         type: "mrkdwn",
-                        text: `*Description*\n${description}`
+                        text: `*<${pr.html_url}|${pr.title}>*`
                       }
                     },
                     {
+                      type: "divider"
+                    },
+                    {
                       type: "section",
                       fields: [
                         {
                           type: "mrkdwn",
-                          text: `*Files Changed*\n${changedFiles}`
+                          text: `👤 *Author*\n<${pr.user.html_url}|@${pr.user.login}>`
                         },
                         {
                           type: "mrkdwn",
-                          text: `*Additions*\n+${additions}`
-                        },
-                        {
-                          type: "mrkdwn",
-                          text: `*Deletions*\n-${deletions}`
-                        },
-                        {
-                          type: "mrkdwn",
-                          text: `*Status*\n${pr.draft ? '📝 Draft' : '✅ Ready'}`
+                          text: `${sizeEmoji} *Size*\n${prSize} • ${totalChanges} changes`
                         }
                       ]
+                    },
+                    {
+                      type: "section",
+                      fields: [
+                        {
+                          type: "mrkdwn",
+                          text: `🔀 *Merge Route*\n\`${headBranch}\` → \`${baseBranch}\``
+                        },
+                        {
+                          type: "mrkdwn",
+                          text: `📊 *Changes*\n${changedFiles} files • +${additions} −${deletions}`
+                        }
+                      ]
+                    },
+                    {
+                      type: "divider"
                     },
                     {
                       type: "actions",
@@ -116,7 +107,7 @@ jobs:
                           type: "button",
                           text: {
                             type: "plain_text",
-                            text: "🚀 Review PR",
+                            text: "👀 Review PR",
                             emoji: true
                           },
                           url: pr.html_url,
@@ -126,19 +117,10 @@ jobs:
                           type: "button",
                           text: {
                             type: "plain_text",
-                            text: "📝 View Files",
+                            text: "📁 View Files",
                             emoji: true
                           },
                           url: `${pr.html_url}/files`
-                        },
-                        {
-                          type: "button",
-                          text: {
-                            type: "plain_text",
-                            text: "💬 View Diff",
-                            emoji: true
-                          },
-                          url: `${pr.html_url}/files?diff=unified`
                         }
                       ]
                     },
@@ -147,7 +129,7 @@ jobs:
                       elements: [
                         {
                           type: "mrkdwn",
-                          text: `📦 Repository: *${pr.base.repo.full_name}* | 🕐 Opened: <!date^${Math.floor(new Date(pr.created_at).getTime() / 1000)}^{date_short_pretty} at {time}|${pr.created_at}>`
+                          text: `📦 ${pr.base.repo.name} • <!date^${Math.floor(new Date(pr.created_at).getTime() / 1000)}^{date_short_pretty} at {time}|${pr.created_at}>`
                         }
                       ]
                     }
@@ -162,7 +144,7 @@ jobs:
               hostname: url.hostname,
               path: url.pathname + url.search,
               method: 'POST',
-              headers: { 
+              headers: {
                 'Content-Type': 'application/json'
               }
             };
@@ -181,10 +163,10 @@ jobs:
               });
             });
 
-            req.on('error', (e) => { 
-              console.error('❌ Failed to send Slack notification:', e); 
+            req.on('error', (e) => {
+              console.error('❌ Failed to send Slack notification:', e);
               throw e;
             });
-            
+
             req.write(JSON.stringify(payload));
             req.end();
