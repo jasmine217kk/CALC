@@ -37,7 +37,7 @@ jobs:
                       type: "section",
                       text: {
                         type: "mrkdwn",
-                        text: `:announcement: *Pull Request Opened*\n*Title:* <${pr.html_url}|${pr.title}>\n*Author:* <${pr.user.html_url}|${pr.user.login}>\n*Route:* \`${headBranch}\` → \`${baseBranch}\`\n*Changes:* ${changedFiles} files [ +${additions} / -${deletions} ]`
+                        text: `:twisted_rightwards_arrows: *Pull Request Opened*\n*Title:* <${pr.html_url}|${pr.title}>\n*Author:* <${pr.user.html_url}|${pr.user.login}>`
                       }
                     },
                     {
