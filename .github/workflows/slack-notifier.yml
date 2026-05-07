@@ -1,4 +1,4 @@
-name: "afv-library PR Slack Notifier (Block Kit)"
+name: "afv-library PR Slack Notifier"
 
 on:
   pull_request:
@@ -20,57 +20,42 @@ jobs:
             const https = require('https');
             const pr = context.payload.pull_request;
 
-            // Stats from the PR context
+            // Stats from the context
             const additions = pr.additions;
             const deletions = pr.deletions;
             const changedFiles = pr.changed_files;
             const headBranch = pr.head.ref;
             const baseBranch = pr.base.ref;
 
-            // Calculate PR size and color
-            const totalChanges = additions + deletions;
-            let prSize, color;
-            if (totalChanges < 100) {
-              prSize = "Small";
-              color = "#36a64f"; // Green
-            } else if (totalChanges < 500) {
-              prSize = "Medium";
-              color = "#ff9900"; // Orange
-            } else {
-              prSize = "Large";
-              color = "#ff0000"; // Red
-            }
-
-            // Build Block Kit payload
+            // Build Block Kit payload with original style
             const payload = {
-              attachments: [
+              blocks: [
                 {
-                  color: color,
-                  blocks: [
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: `🔖 *AFV-LIBRARY | Pull Request Submission*\n________________________________________________\n\n*Title:* ${pr.title}\n*Author:* <${pr.user.html_url}|${pr.user.login}>\n*Route:* \`${headBranch}\` → \`${baseBranch}\`\n*Changes:* ${changedFiles} files [ +${additions} / -${deletions} ]\n________________________________________________`
+                  }
+                },
+                {
+                  type: "actions",
+                  elements: [
                     {
-                      type: "section",
+                      type: "button",
                       text: {
-                        type: "mrkdwn",
-                        text: `*Pull Request:* <${pr.html_url}|${pr.title}>\n*Author:* ${pr.user.login} | *Branch:* \`${headBranch}\` → \`${baseBranch}\` | *Size:* ${prSize}\n*Changes:* ${changedFiles} files (+${additions} −${deletions})`
+                        type: "plain_text",
+                        text: "Review PR"
                       },
-                      accessory: {
-                        type: "button",
-                        text: {
-                          type: "plain_text",
-                          text: "Review PR"
-                        },
-                        url: pr.html_url,
-                        style: "primary"
-                      }
+                      url: pr.html_url,
+                      style: "primary"
                     },
                     {
-                      type: "context",
-                      elements: [
-                        {
-                          type: "mrkdwn",
-                          text: `${pr.base.repo.name} | <!date^${Math.floor(new Date(pr.created_at).getTime() / 1000)}^{date_short_pretty} at {time}|${pr.created_at}>`
-                        }
-                      ]
+                      type: "button",
+                      text: {
+                        type: "plain_text",
+                        text: "View Files"
+                      },
+                      url: `${pr.html_url}/files`
                     }
                   ]
                 }
@@ -83,9 +68,7 @@ jobs:
               hostname: url.hostname,
               path: url.pathname + url.search,
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              }
+              headers: { 'Content-Type': 'application/json' }
             };
 
             const req = https.request(options, (res) => {
