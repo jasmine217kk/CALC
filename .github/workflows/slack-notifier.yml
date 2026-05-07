@@ -34,7 +34,7 @@ jobs:
                   type: "section",
                   text: {
                     type: "mrkdwn",
-                    text: `🔖 *Pull Request Opened*\n________________________________________________\n\n*Title:* <${pr.html_url}|${pr.title}>\n*Author:* <${pr.user.html_url}|${pr.user.login}>\n*Route:* \`${headBranch}\` → \`${baseBranch}\`\n*Changes:* ${changedFiles} files [ +${additions} / -${deletions} ]\n________________________________________________`
+                    text: `:announcement: *Pull Request Opened*\n________________________________________________\n\n*Title:* <${pr.html_url}|${pr.title}>\n*Author:* <${pr.user.html_url}|${pr.user.login}>\n*Route:* \`${headBranch}\` → \`${baseBranch}\`\n*Changes:* ${changedFiles} files [ +${additions} / -${deletions} ]\n________________________________________________`
                   }
                 },
                 {
