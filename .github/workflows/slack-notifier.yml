@@ -1,4 +1,4 @@
-name: "afv-library PR Slack Notifier"
+name: "PR Slack Notifier"
 
 on:
   pull_request:
