@@ -41,12 +41,6 @@ jobs:
               color = "#ff0000"; // Red
             }
 
-            // Determine emoji based on PR size
-            let sizeEmoji;
-            if (prSize === "Small") sizeEmoji = "🟢";
-            else if (prSize === "Medium") sizeEmoji = "🟡";
-            else sizeEmoji = "🔴";
-
             // Build Block Kit payload
             const payload = {
               attachments: [
@@ -54,82 +48,27 @@ jobs:
                   color: color,
                   blocks: [
                     {
-                      type: "header",
-                      text: {
-                        type: "plain_text",
-                        text: "🚀 Pull Request Opened",
-                        emoji: true
-                      }
-                    },
-                    {
                       type: "section",
                       text: {
                         type: "mrkdwn",
-                        text: `*<${pr.html_url}|${pr.title}>*`
+                        text: `*Pull Request:* <${pr.html_url}|${pr.title}>\n*Author:* ${pr.user.login} | *Branch:* \`${headBranch}\` → \`${baseBranch}\` | *Size:* ${prSize}\n*Changes:* ${changedFiles} files (+${additions} −${deletions})`
+                      },
+                      accessory: {
+                        type: "button",
+                        text: {
+                          type: "plain_text",
+                          text: "Review PR"
+                        },
+                        url: pr.html_url,
+                        style: "primary"
                       }
-                    },
-                    {
-                      type: "divider"
-                    },
-                    {
-                      type: "section",
-                      fields: [
-                        {
-                          type: "mrkdwn",
-                          text: `👤 *Author*\n<${pr.user.html_url}|@${pr.user.login}>`
-                        },
-                        {
-                          type: "mrkdwn",
-                          text: `${sizeEmoji} *Size*\n${prSize} • ${totalChanges} changes`
-                        }
-                      ]
-                    },
-                    {
-                      type: "section",
-                      fields: [
-                        {
-                          type: "mrkdwn",
-                          text: `🔀 *Merge Route*\n\`${headBranch}\` → \`${baseBranch}\``
-                        },
-                        {
-                          type: "mrkdwn",
-                          text: `📊 *Changes*\n${changedFiles} files • +${additions} −${deletions}`
-                        }
-                      ]
-                    },
-                    {
-                      type: "divider"
-                    },
-                    {
-                      type: "actions",
-                      elements: [
-                        {
-                          type: "button",
-                          text: {
-                            type: "plain_text",
-                            text: "👀 Review PR",
-                            emoji: true
-                          },
-                          url: pr.html_url,
-                          style: "primary"
-                        },
-                        {
-                          type: "button",
-                          text: {
-                            type: "plain_text",
-                            text: "📁 View Files",
-                            emoji: true
-                          },
-                          url: `${pr.html_url}/files`
-                        }
-                      ]
                     },
                     {
                       type: "context",
                       elements: [
                         {
                           type: "mrkdwn",
-                          text: `📦 ${pr.base.repo.name} • <!date^${Math.floor(new Date(pr.created_at).getTime() / 1000)}^{date_short_pretty} at {time}|${pr.created_at}>`
+                          text: `${pr.base.repo.name} | <!date^${Math.floor(new Date(pr.created_at).getTime() / 1000)}^{date_short_pretty} at {time}|${pr.created_at}>`
                         }
                       ]
                     }
