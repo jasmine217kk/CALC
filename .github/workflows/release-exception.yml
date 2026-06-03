@@ -1,0 +1,284 @@
+name: Release Exception Cherry-Pick
+
+# Triggered via repository_dispatch from Slack Workflow Builder or bot.
+#
+# Accepts TWO payload formats:
+#
+# Format 1 — Structured (from Slack bot or direct API call):
+#   gh api repos/salesforce-internal/sf-skills-internal/dispatches \
+#     -f event_type=release-exception \
+#     -f 'client_payload[pr_number]=123' \
+#     -f 'client_payload[skill_name]=generating-apex' \
+#     -f 'client_payload[approver]=@john.doe'
+#
+# Format 2 — Raw message (from Slack Workflow Builder):
+#   client_payload = { "message_text": "PR: 123\nSkill: generating-apex\n...", "approver": "U01ABC" }
+#   The workflow will parse pr_number and skill_name from message_text.
+
+on:
+  repository_dispatch:
+    types: [release-exception]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  cherry-pick-and-pr:
+    runs-on: salesforce-internal-Ubuntu
+    env:
+      APPROVER: ${{ github.event.client_payload.approver }}
+    steps:
+      - name: Parse inputs
+        id: parse
+        env:
+          INPUT_PR_NUMBER: ${{ github.event.client_payload.pr_number }}
+          INPUT_SKILL_NAME: ${{ github.event.client_payload.skill_name }}
+          INPUT_MESSAGE_TEXT: ${{ github.event.client_payload.message_text }}
+        run: |
+          # If structured fields are provided, use them directly
+          if [ -n "$INPUT_PR_NUMBER" ] && [ -n "$INPUT_SKILL_NAME" ]; then
+            echo "Using structured payload"
+            PR_NUMBER="$INPUT_PR_NUMBER"
+            SKILL_NAME="$INPUT_SKILL_NAME"
+          elif [ -n "$INPUT_MESSAGE_TEXT" ]; then
+            # Parse from Slack message text
+            # Expected format in message:
+            #   PR: 456
+            #   Skill: generating-apex
+            echo "Parsing from message text..."
+            PR_NUMBER=$(echo "$INPUT_MESSAGE_TEXT" | grep -iE '^PR[:#\s]*' | grep -oE '[0-9]+' | head -1)
+            SKILL_NAME=$(echo "$INPUT_MESSAGE_TEXT" | grep -iE '^Skill[:\s]*' | sed 's/^[Ss]kill[: ]*//' | tr -d ' ' | head -1)
+          fi
+
+          # Validate
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::error::Could not determine PR number. Provide 'pr_number' in payload or include 'PR: <number>' in message_text."
+            exit 1
+          fi
+
+          if [ -z "$SKILL_NAME" ]; then
+            echo "::error::Could not determine skill name. Provide 'skill_name' in payload or include 'Skill: <name>' in message_text."
+            exit 1
+          fi
+
+          # Strip any '#' prefix from PR number
+          PR_NUMBER=$(echo "$PR_NUMBER" | sed 's/^#//')
+
+          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          echo "SKILL_NAME=$SKILL_NAME" >> $GITHUB_ENV
+          echo "Processing release exception for PR #$PR_NUMBER (skill: $SKILL_NAME)"
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch develop branch
+        run: git fetch origin develop
+
+      - name: Get PR commits
+        id: pr-info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Fetching info for PR #$PR_NUMBER..."
+
+          # Get PR details via gh CLI (safe - PR_NUMBER is from trusted dispatch payload)
+          PR_DATA=$(gh pr view "$PR_NUMBER" --json title,mergeCommit,commits,state,baseRefName)
+
+          PR_STATE=$(echo "$PR_DATA" | jq -r '.state')
+          PR_BASE=$(echo "$PR_DATA" | jq -r '.baseRefName')
+          PR_TITLE=$(echo "$PR_DATA" | jq -r '.title')
+
+          echo "PR State: $PR_STATE"
+          echo "PR Base: $PR_BASE"
+          echo "PR Title: $PR_TITLE"
+
+          # Validate PR is merged into develop
+          if [ "$PR_STATE" != "MERGED" ]; then
+            echo "::error::PR #$PR_NUMBER is not merged (state: $PR_STATE). Only merged PRs can be cherry-picked."
+            exit 1
+          fi
+
+          if [ "$PR_BASE" != "develop" ]; then
+            echo "::warning::PR #$PR_NUMBER was merged into '$PR_BASE', not 'develop'. Proceeding anyway."
+          fi
+
+          # Get the merge commit SHA
+          MERGE_COMMIT=$(echo "$PR_DATA" | jq -r '.mergeCommit.oid')
+          echo "Merge commit: $MERGE_COMMIT"
+
+          # Get individual commit SHAs from the PR
+          COMMITS=$(echo "$PR_DATA" | jq -r '.commits[].oid')
+          COMMIT_COUNT=$(echo "$COMMITS" | wc -l | tr -d ' ')
+          echo "Found $COMMIT_COUNT commit(s) to cherry-pick"
+
+          echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
+          echo "merge_commit=$MERGE_COMMIT" >> $GITHUB_OUTPUT
+          echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
+
+          # Store commits in a file (handles multi-line safely)
+          echo "$COMMITS" > /tmp/commits.txt
+
+      - name: Create branch and cherry-pick
+        id: cherry-pick
+        run: |
+          BRANCH_NAME="release-exception/${SKILL_NAME}-pr-${PR_NUMBER}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check if branch already exists
+          if git ls-remote --exit-code origin "refs/heads/$BRANCH_NAME" >/dev/null 2>&1; then
+            echo "::error::Branch '$BRANCH_NAME' already exists. A release exception for this PR may already be in progress."
+            exit 1
+          fi
+
+          git checkout -b "$BRANCH_NAME"
+
+          echo "Cherry-picking ${{ steps.pr-info.outputs.commit_count }} commit(s)..."
+
+          CONFLICT="false"
+          CONFLICT_COMMIT=""
+          PICKED=0
+
+          while IFS= read -r COMMIT; do
+            [ -z "$COMMIT" ] && continue
+            echo "Cherry-picking $COMMIT..."
+            if ! git cherry-pick "$COMMIT" --allow-empty; then
+              echo "::warning::Cherry-pick conflict on commit $COMMIT"
+              CONFLICT="true"
+              CONFLICT_COMMIT="$COMMIT"
+
+              # Stage conflicted files with conflict markers intact
+              git add -A
+              git -c core.editor=true cherry-pick --continue || \
+                git commit --allow-empty -m "CONFLICT: cherry-pick $COMMIT (resolve manually)"
+
+              # Skip remaining commits — let human resolve from here
+              break
+            fi
+            PICKED=$((PICKED + 1))
+          done < /tmp/commits.txt
+
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "conflict=$CONFLICT" >> $GITHUB_OUTPUT
+          echo "conflict_commit=$CONFLICT_COMMIT" >> $GITHUB_OUTPUT
+          echo "picked=$PICKED" >> $GITHUB_OUTPUT
+
+          git push origin "$BRANCH_NAME"
+          echo "Branch pushed successfully"
+
+      - name: Create Pull Request
+        if: steps.cherry-pick.outputs.conflict == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE_SOURCE: ${{ steps.pr-info.outputs.pr_title }}
+          COMMIT_COUNT: ${{ steps.pr-info.outputs.commit_count }}
+          BRANCH_NAME: ${{ steps.cherry-pick.outputs.branch }}
+        run: |
+          PR_URL=$(gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "Release Exception: ${SKILL_NAME}" \
+            --label "Skill: Release Exception" \
+            --body "## Release Exception
+
+          | Field | Value |
+          |-------|-------|
+          | **Skill** | \`${SKILL_NAME}\` |
+          | **Source PR** | #${PR_NUMBER} |
+          | **PR Title** | ${PR_TITLE_SOURCE} |
+          | **Approved by** | ${APPROVER} |
+          | **Commits cherry-picked** | ${COMMIT_COUNT} |
+
+          ---
+
+          ### Why is this a release exception?
+          ADK eval does not yet support this skill's use-case. Approved via \`#sf-skills-onboarding-support\` Slack channel.
+
+          ### What was cherry-picked?
+          All commits from PR #${PR_NUMBER} (\`develop\`) into \`main\`.
+
+          ---
+          > :warning: **This release bypasses the standard eval quality gate.**")
+
+          echo "PR_URL=$PR_URL" >> $GITHUB_ENV
+          echo "Created PR: $PR_URL"
+
+      - name: Create Draft PR (conflict)
+        if: steps.cherry-pick.outputs.conflict == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE_SOURCE: ${{ steps.pr-info.outputs.pr_title }}
+          COMMIT_COUNT: ${{ steps.pr-info.outputs.commit_count }}
+          BRANCH_NAME: ${{ steps.cherry-pick.outputs.branch }}
+          CONFLICT_COMMIT: ${{ steps.cherry-pick.outputs.conflict_commit }}
+          PICKED_COUNT: ${{ steps.cherry-pick.outputs.picked }}
+        run: |
+          PR_URL=$(gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "⚠️ Release Exception (CONFLICTS): ${SKILL_NAME}" \
+            --label "Skill: Release Exception" \
+            --draft \
+            --body "## ⚠️ Release Exception — Merge Conflicts Detected
+
+          | Field | Value |
+          |-------|-------|
+          | **Skill** | \`${SKILL_NAME}\` |
+          | **Source PR** | #${PR_NUMBER} |
+          | **PR Title** | ${PR_TITLE_SOURCE} |
+          | **Approved by** | ${APPROVER} |
+          | **Commits picked successfully** | ${PICKED_COUNT} of ${COMMIT_COUNT} |
+          | **Conflict on commit** | \`${CONFLICT_COMMIT}\` |
+
+          ---
+
+          ### ❌ What happened?
+          Cherry-pick encountered a merge conflict. The branch has been pushed with conflict markers in the files.
+
+          ### 🔧 How to resolve
+
+          \`\`\`bash
+          git fetch origin
+          git checkout $BRANCH_NAME
+          # Look for files with conflict markers (<<<<<<< / ======= / >>>>>>>)
+          grep -r '<<<<<<< HEAD' . --include='*.md' --include='*.ts' --include='*.js' --include='*.yaml'
+          # Resolve conflicts, then:
+          git add .
+          git commit -m 'resolve cherry-pick conflicts'
+          git push origin $BRANCH_NAME
+          \`\`\`
+
+          Once conflicts are resolved, mark this PR as **Ready for Review**.
+
+          ---
+          > :warning: **This release bypasses the standard eval quality gate.**")
+
+          echo "PR_URL=$PR_URL" >> $GITHUB_ENV
+          echo "::warning::Draft PR created with conflicts: $PR_URL"
+
+      - name: Summary
+        if: always() && steps.cherry-pick.outcome == 'success'
+        run: |
+          if [ "${{ steps.cherry-pick.outputs.conflict }}" = "true" ]; then
+            echo "## ⚠️ Release Exception PR Created (Draft — has conflicts)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ✅ Release Exception PR Created" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| PR | $PR_URL |" >> $GITHUB_STEP_SUMMARY
+          echo "| Skill | \`${SKILL_NAME}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Source | #${PR_NUMBER} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ steps.cherry-pick.outputs.branch }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Approved by | ${APPROVER} |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.cherry-pick.outputs.conflict }}" = "true" ]; then
+            echo "| ⚠️ Conflict on | \`${{ steps.cherry-pick.outputs.conflict_commit }}\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| Status | **Draft** — resolve conflicts and mark Ready for Review |" >> $GITHUB_STEP_SUMMARY
+          fi
